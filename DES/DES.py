@@ -1,3 +1,6 @@
+import string
+import secrets
+
 # Table of Position of 64 bits at initial level: Initial Permutation Table
 INIT_PERM = [58, 50, 42, 34, 26, 18, 10, 2,
 				60, 52, 44, 36, 28, 20, 12, 4,
@@ -119,21 +122,26 @@ INV_PERM = [
     33, 1, 41, 9, 49, 17, 57, 25
 ]
 
+# 64 bit ascii to binary
 def ascii_to_bin(input_str):
     binary_str = ''.join(format(ord(i),'08b') for i in input_str)
     binary_str = binary_str[:64].ljust(64,'0')
     return binary_str 
 
+# 64 bit binary to ascii
 def bin_to_ascii(binary):
     str_out = ''.join([chr(int(binary[i:i+8], 2)) for i in range(0, len(binary), 8)])
     return str_out
 
+# Function for permutation between block and predefined table
 def permute(block, table):
     return [block[i-1] for i in table]
 
+# Perform xor operation
 def xor(a, b):
     return [str(int(ai) ^ int(bi)) for ai, bi in zip(a,b)]
 
+# Round key generation
 def round_key_gen(key):
     bin_key = ascii_to_bin(key)
     pc1_key = permute(bin_key, PC1)
@@ -157,5 +165,189 @@ def round_key_gen(key):
         
     return round_keys
 
-def des_encrypt():
+# DES Encryption
+def des_encrypt(str_input, encrypt_key):
+    bin_input = ascii_to_bin(str_input)
+    round_keys = round_key_gen(ascii_to_bin(encrypt_key))
     
+    init_perm_input = permute(bin_input, INIT_PERM)
+    
+    lpt = init_perm_input[:32]
+    rpt = init_perm_input[32:]
+    
+    # Assume 'rpt' is the 32-bit right half, 'lpt' is the 32-bit left half, and 'round_keys' is a list of 16 round keys
+    for round_num in range(16):
+        # Perform expansion (32 bits to 48 bits)
+        expanded_perm_str = ''.join(permute(rpt, EXP_PERM))
+
+        # Round key for the current round
+        round_key_str = round_keys[round_num]
+
+        # Perform xor operation
+        xor_str = ''.join(xor(expanded_perm_str, round_key_str))
+        
+        # Split the 48-bit string into 8 groups of 6 bits each
+        six_bit_groups = [xor_str[i:i+6] for i in range(0, 48, 6)]
+
+        # Initialize the substituted bits string
+        s_box_substituted = ''
+
+        # Apply S-box substitution for each 6-bit group
+        for i in range(8):
+            # Extract the row and column bits
+            row_bits = int(six_bit_groups[i][0] + six_bit_groups[i][-1], 2)
+            col_bits = int(six_bit_groups[i][1:-1], 2)
+
+            # Lookup the S-box value
+            s_box_value = S_BOX[i][row_bits][col_bits]
+            
+            # Convert the S-box value to a 4-bit binary string and append to the result
+            s_box_substituted += format(s_box_value, '04b')
+
+        # Apply a P permutation function to the result
+        p_box_result = ''.join(permute(s_box_substituted, PERM_FUNC))
+
+        # Perform XOR operation
+        new_rpt = xor(lpt, p_box_result)
+
+        # Update LPT and RPT for the next round
+        lpt = rpt
+        rpt = new_rpt
+
+    # After the final round, reverse the last swap
+    final_result = rpt + lpt
+
+    # Perform the final permutation (IP-1)
+    final_cipher = ''.join(permute(final_result, INV_PERM))
+
+    # Convert binary cipher to ascii
+    final_cipher_ascii = bin_to_ascii(final_cipher)
+    #print("Final Cipher text:", final_cipher_ascii , len(final_cipher_ascii))
+    
+    return final_cipher_ascii
+
+# DES Decryption
+def des_decrypt(final_cipher, encrypt_key):
+    
+    # Initialize lists to store round keys
+    round_keys = round_key_gen(ascii_to_bin(encrypt_key))
+    bin_cipher = ascii_to_bin(final_cipher)
+    
+    # Apply Initial Permutation
+    ip_dec_result_str = ''.join(permute(bin_cipher, INIT_PERM))
+    
+    lpt = ip_dec_result_str[:32]
+    rpt = ip_dec_result_str[32:]
+
+    for round_num in range(16):
+        # Perform expansion (32 bits to 48 bits)
+        expanded_result = ''.join(permute(rpt, EXP_PERM))
+        
+        # Round key for the current round
+        round_key_str = round_keys[15-round_num]
+    
+        # XOR between key and expanded result 
+        xor_result_str = ''.join(xor(expanded_result, round_key_str))
+        
+        # Split the 48-bit string into 8 groups of 6 bits each
+        six_bit_groups = [xor_result_str[i:i+6] for i in range(0, 48, 6)]
+    
+        # Initialize the substituted bits string
+        s_box_substituted = ''
+    
+        # Apply S-box substitution for each 6-bit group
+        for i in range(8):
+            # Extract the row and column bits
+            row_bits = int(six_bit_groups[i][0] + six_bit_groups[i][-1], 2)
+            col_bits = int(six_bit_groups[i][1:-1], 2)
+    
+            # Lookup the S-box value
+            s_box_value = S_BOX[i][row_bits][col_bits]
+            
+            # Convert the S-box value to a 4-bit binary string and append to the result
+            s_box_substituted += format(s_box_value, '04b')
+    
+        # Apply a P permutation to the result
+        p_box_result = ''.join(permute(s_box_substituted, PERM_FUNC))
+    
+        # Perform XOR operation
+        new_rpt = xor(lpt, p_box_result)
+    
+        # Update LPT and RPT for the next round
+        lpt = rpt
+        rpt = new_rpt
+    
+    final_result = rpt + lpt
+    
+    # Perform the final inverse permutation (IP-1)
+    final_cipher = ''.join(permute(final_result, INV_PERM))
+
+    # binary cipher string to ascii
+    final_cipher_ascii = bin_to_ascii(final_cipher)
+    #print("Decryption of Cipher :", final_cipher_ascii)
+
+    return final_cipher_ascii
+
+# Split the string into 64-bit each
+def split_str(input_str):
+    return [input_str[i:i+8] for i in range(0, len(input_str), 8)]
+
+# Batch encryption for larger input
+def batch_encrypt(str_input, key):
+    str_list = split_str(str_input)
+    res_cipher = ''
+    
+    for i in str_list:
+        res_cipher += des_encrypt(i, key)
+    
+    print("Encrypt Result: ")
+    print(res_cipher)
+    return res_cipher
+
+# Batch decryption for larger input        
+def batch_decrypt(cipher, key):
+    str_list = split_str(cipher)
+    res_str = ''
+    
+    for i in str_list:
+        res_str += des_decrypt(i, key)
+
+    print("Decrypt Result: " + res_str)
+    return res_str
+
+def generate_key():
+    alphabet = string.ascii_letters + string.digits
+    keys = ''.join(secrets.choice(alphabet) for i in range(8))
+    return keys
+
+#keys = input("Enter encryption key (max 8 characters): ")
+# print("DES Encryption and Decryption")
+# print("1. Encryption\n2. Decryption\n3. Exit")
+# x = input("Enter choice: ")
+# if x == "1":
+#     user_input = input("Enter message: \n")
+#     keys = input("Enter key: \n")
+#     #keys = generate_key()    
+#     #print("Key generated: " + keys)
+#     enc = batch_encrypt(user_input, keys)
+#     dec = batch_decrypt(enc, keys)
+# elif x == "2":
+#     user_cipher = input("Enter cipher message: \n")
+#     key = input("Enter cipher key: \n")
+#     dec = batch_decrypt(user_cipher, keys)
+# elif x == "3":
+#     exit()
+
+user_input = input("Enter message: \n")
+keys = generate_key()
+
+
+print("Generated key used for DES: " + keys)
+
+enc = batch_encrypt(user_input, keys)
+dec = batch_decrypt(enc, keys)
+
+#print(enc)
+#enc = des_encrypt(user_input, keys)
+#dec = des_decrypt(enc, keys)
+#print(enc)
