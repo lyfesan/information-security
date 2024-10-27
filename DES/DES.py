@@ -1,7 +1,7 @@
 import string
 import secrets
 
-# Table of Position of 64 bits at initial level: Initial Permutation Table
+# Initial Permutation Table
 INIT_PERM = [58, 50, 42, 34, 26, 18, 10, 2,
 				60, 52, 44, 36, 28, 20, 12, 4,
 				62, 54, 46, 38, 30, 22, 14, 6,
@@ -10,7 +10,7 @@ INIT_PERM = [58, 50, 42, 34, 26, 18, 10, 2,
 				59, 51, 43, 35, 27, 19, 11, 3,
 				61, 53, 45, 37, 29, 21, 13, 5,
 				63, 55, 47, 39, 31, 23, 15, 7]
-
+# Permuted Choice 1 table
 PC1 = [
     57, 49, 41, 33, 25, 17, 9,
     1, 58, 50, 42, 34, 26, 18,
@@ -21,7 +21,7 @@ PC1 = [
     14, 6, 61, 53, 45, 37, 29,
     21, 13, 5, 28, 20, 12, 4
 ]
-
+# Permuted choice 2 table
 PC2 = [
     14, 17, 11, 24, 1, 5,
     3, 28, 15, 6, 21, 10,
@@ -44,7 +44,7 @@ EXP_PERM = [32, 1, 2, 3, 4, 5, 4, 5,
 		22, 23, 24, 25, 24, 25, 26, 27,
 		28, 29, 28, 29, 30, 31, 32, 1]
 
-# S-box tables for DES
+# S-box tables
 S_BOX = [
     # S-box 1
     [
@@ -103,14 +103,14 @@ S_BOX = [
         [2, 1, 14, 7, 4, 10, 8, 13, 15, 12, 9, 0, 3, 5, 6, 11]
     ]
 ]
-
+# Permutation function(P) table
 PERM_FUNC = [
     16, 7, 20, 21, 29, 12, 28, 17,
     1, 15, 23, 26, 5, 18, 31, 10,
     2, 8, 24, 14, 32, 27, 3, 9,
     19, 13, 30, 6, 22, 11, 4, 25
 ]
-
+# Inverse permutation table
 INV_PERM = [
     40, 8, 48, 16, 56, 24, 64, 32,
     39, 7, 47, 15, 55, 23, 63, 31,
@@ -144,6 +144,7 @@ def xor(a, b):
 # Round key generation
 def round_key_gen(key):
     bin_key = ascii_to_bin(key)
+    # Reduce 64-bit key into 56-bit
     pc1_key = permute(bin_key, PC1)
 
     # Split 56-bit key into two 28-bit
@@ -300,8 +301,8 @@ def batch_encrypt(str_input, key):
     for i in str_list:
         res_cipher += des_encrypt(i, key)
     
-    print("Encrypt Result: ")
-    print(res_cipher)
+    #print("Encrypt Result: ")
+    #print(res_cipher)
     return res_cipher
 
 # Batch decryption for larger input        
@@ -312,7 +313,7 @@ def batch_decrypt(cipher, key):
     for i in str_list:
         res_str += des_decrypt(i, key)
 
-    print("Decrypt Result: " + res_str)
+    #print("Decrypt Result: " + res_str)
     return res_str
 
 def generate_key():
@@ -338,14 +339,13 @@ def generate_key():
 # elif x == "3":
 #     exit()
 
-user_input = input("Enter message: \n")
-keys = generate_key()
+# user_input = input("Enter message: \n")
+# keys = generate_key()
 
+# print("Generated key used for DES: " + keys)
 
-print("Generated key used for DES: " + keys)
-
-enc = batch_encrypt(user_input, keys)
-dec = batch_decrypt(enc, keys)
+# enc = batch_encrypt(user_input, keys)
+# dec = batch_decrypt(enc, keys)
 
 #print(enc)
 #enc = des_encrypt(user_input, keys)
